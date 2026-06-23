@@ -1,0 +1,89 @@
+def parse_grammar(grammar_input):
+    lhs, rhs = grammar_input.split("->")
+    lhs = lhs.strip()
+
+    productions = [p.strip() for p in rhs.split("|")]
+
+    return lhs, productions
+
+
+def is_ambiguous(productions):
+    operators = ["+", "-", "*", "/"]
+
+    for prod in productions:
+        for op in operators:
+            if op in prod:
+                parts = prod.split(op)
+
+                if len(parts) == 2:
+                    left = parts[0].strip()
+                    right = parts[1].strip()
+
+                    if left == "E" and right == "E":
+                        return True
+
+    return False
+
+
+def get_operators(productions):
+    operators = set()
+
+    for prod in productions:
+        for ch in prod:
+            if ch in ["+", "-", "*", "/"]:
+                operators.add(ch)
+
+    return operators
+
+
+def convert_to_non_ambiguous(operators):
+    add_ops = []
+    mul_ops = []
+
+    for op in operators:
+        if op in ["+", "-"]:
+            add_ops.append(op)
+        elif op in ["*", "/"]:
+            mul_ops.append(op)
+
+    grammar = {}
+
+    e_rules = []
+    for op in add_ops:
+        e_rules.append(f"E {op} T")
+    e_rules.append("T")
+    grammar["E"] = e_rules
+
+    t_rules = []
+    for op in mul_ops:
+        t_rules.append(f"T {op} F")
+    t_rules.append("F")
+    grammar["T"] = t_rules
+
+    grammar["F"] = ["( E )", "id"]
+
+    return grammar
+
+
+def display_grammar(grammar):
+    for lhs, rhs in grammar.items():
+        print(f"{lhs} -> {' | '.join(rhs)}")
+
+
+grammar_input = input("Enter Grammar (Example: E->E+E|E*E|(E)|id):\n")
+
+lhs, productions = parse_grammar(grammar_input)
+
+print("\nInput Grammar:")
+print(f"{lhs} -> {' | '.join(productions)}")
+
+if is_ambiguous(productions):
+    print("\nThe grammar is AMBIGUOUS.")
+
+    operators = get_operators(productions)
+    new_grammar = convert_to_non_ambiguous(operators)
+
+    print("\nEquivalent NON-AMBIGUOUS Grammar:\n")
+    display_grammar(new_grammar)
+else:
+    print("\nThe grammar is NOT ambiguous.")

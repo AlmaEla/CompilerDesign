@@ -1,0 +1,141 @@
+A simplified C implementation of the lexer:
+
+
+
+
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+
+typedef enum {
+    TOKEN_KEYWORD, TOKEN_IDENTIFIER, TOKEN_NUMBER,
+    TOKEN_STRING, TOKEN_OPERATOR, TOKEN_DELIMITER,
+    TOKEN_EOF, TOKEN_ERROR
+} TokenType;
+
+typedef struct {
+    TokenType type;
+    char value[256];
+} Token;
+
+const char *keywords[] = {
+    "auto","break","case","char","const","continue",
+    "default","do","double","else","enum","extern",
+    "float","for","goto","if","inline","int","long",
+    "register","restrict","return","short","signed",
+    "sizeof","static","struct","switch","typedef",
+    "union","unsigned","void","volatile","while"
+};
+
+int isKeyword(const char *str) {
+    for (int i = 0; i < 34; i++) {
+        if (strcmp(str, keywords[i]) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+// Convert enum to readable text
+char* getTypeName(TokenType type) {
+    switch(type) {
+        case TOKEN_KEYWORD: return "Keyword";
+        case TOKEN_IDENTIFIER: return "Identifier";
+        case TOKEN_NUMBER: return "Number";
+        case TOKEN_STRING: return "String";
+        case TOKEN_OPERATOR: return "Operator";
+        case TOKEN_DELIMITER: return "Delimiter";
+        default: return "Unknown";
+    }
+}
+
+Token nextToken(FILE *file) {
+    Token token;
+    int ch, index = 0;
+
+    while ((ch = fgetc(file)) != EOF && isspace(ch));
+
+    if (ch == EOF) {
+        token.type = TOKEN_EOF;
+        return token;
+    }
+
+    // Number
+    if (isdigit(ch)) {
+        token.type = TOKEN_NUMBER;
+        while (isdigit(ch) || ch == '.') {
+            token.value[index++] = ch;
+            ch = fgetc(file);
+        }
+        ungetc(ch, file);
+    }
+
+    // Identifier or Keyword
+    else if (isalpha(ch) || ch == '_') {
+        while (isalnum(ch) || ch == '_') {
+            token.value[index++] = ch;
+            ch = fgetc(file);
+        }
+        ungetc(ch, file);
+        token.type = isKeyword(token.value) ?
+                     TOKEN_KEYWORD : TOKEN_IDENTIFIER;
+    }
+
+    // String
+    else if (ch == '"') {
+        while ((ch = fgetc(file)) != '"' && ch != EOF) {
+            token.value[index++] = ch;
+        }
+        token.type = TOKEN_STRING;
+    }
+
+    // Operator or Delimiter
+    else {
+        token.value[0] = ch;
+
+        if (strchr("+-*/=%", ch))
+            token.type = TOKEN_OPERATOR;
+        else if (strchr(";,(){}", ch))
+            token.type = TOKEN_DELIMITER;
+        else
+            token.type = TOKEN_ERROR;
+    }
+
+    token.value[index] = '\0';
+    return token;
+}
+
+int main() {
+    FILE *file = fopen("program.c", "r");
+    Token token;
+
+    while ((token = nextToken(file)).type != TOKEN_EOF) {
+        printf("%s -> %s\n", token.value, getTypeName(token.type));
+    }
+
+    fclose(file);
+    return 0;
+}
+7. Sample Input (program.c)
+int a = 10;
+float x = 5.5;
+printf("Hello");
+
+
+
+
+Sample Output
+int -> Keyword
+a -> Identifier
+= -> Operator
+10 -> Number
+; -> Delimiter
+float -> Keyword
+x -> Identifier
+= -> Operator
+5.5 -> Number
+; -> Delimiter
+printf -> Identifier
+( -> Delimiter
+Hello -> String
+) -> Delimiter
+; -> Delimiter
